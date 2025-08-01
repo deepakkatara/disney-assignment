@@ -1,0 +1,25 @@
+{
+  "name": "disney-assignment",
+  "version": "1.0.0",
+  "description": "An interactive directory for exploring Disney characters built with Lit web components and vanilla JavaScript.",
+  "main": "index.js",
+  "scripts": {
+    "start": "web-dev-server --node-resolve --open --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepakkatara/disney-assignment.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/deepakkatara/disney-assignment/issues"
+  },
+  "homepage": "https://github.com/deepakkatara/disney-assignment#readme",
+  "dependencies": {
+    "@web/dev-server": "^0.4.6",
+    "lit": "^3.3.1"
+  }
+}
