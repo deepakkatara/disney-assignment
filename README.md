@@ -2,7 +2,9 @@
 
 An interactive directory for exploring Disney characters built with Lit web components and vanilla JavaScript.
 
-![Uploading image.png…]()
+<img width="1785" height="999" alt="image" src="https://github.com/user-attachments/assets/9e77588c-834f-46c2-a116-a286eeb75097" />
+
+
 
 
 ## Features
