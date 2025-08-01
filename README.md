@@ -2,6 +2,9 @@
 
 An interactive directory for exploring Disney characters built with Lit web components and vanilla JavaScript.
 
+![Uploading image.png…]()
+
+
 ## Features
 
 - Search characters by name or keywords
