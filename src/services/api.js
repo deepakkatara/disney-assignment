@@ -5,6 +5,36 @@ class DisneyApiService {
         this._cache = new Map();
     }
 
+    _normalizeResponse(data) {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (data.data) {
+            if (Array.isArray(data.data)) return data.data;
+            return [data.data];
+        }
+        if (data._id || data.name) return [data];
+        return [];
+    }
+
+    _handleApiError(error, operation) {
+        console.error(`API Error during ${operation}:`, error);
+        throw error;
+    }
+
+    async _fetchWithErrorHandling(url, operation) {
+        try {
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            this._handleApiError(error, operation);
+        }
+    }
+
     async getCharacters(page = 1) {
         const cacheKey = `characters_page_${page}`;
         
@@ -12,23 +42,14 @@ class DisneyApiService {
             return this._cache.get(cacheKey);
         }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/character?page=${page}`);
-            
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status}`);
-            }
+        const data = await this._fetchWithErrorHandling(
+            `${API_BASE_URL}/character?page=${page}`,
+            'getCharacters'
+        );
 
-            const data = await response.json();
-            const transformedData = {
-                data: Array.isArray(data.data) ? data.data : [data.data]
-            };
-            this._cache.set(cacheKey, transformedData);
-            return transformedData;
-        } catch (error) {
-            console.error('Error fetching characters:', error);
-            throw error;
-        }
+        const normalizedData = this._normalizeResponse(data);
+        this._cache.set(cacheKey, normalizedData);
+        return normalizedData;
     }
 
     async searchCharacters(query) {
@@ -38,24 +59,14 @@ class DisneyApiService {
             return this._cache.get(cacheKey);
         }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/character?name=${encodeURIComponent(query)}`);
-            
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status}`);
-            }
+        const data = await this._fetchWithErrorHandling(
+            `${API_BASE_URL}/character?name=${encodeURIComponent(query)}`,
+            'searchCharacters'
+        );
 
-            const data = await response.json();
-            // Transform the response to match our expected format
-            const transformedData = {
-                data: Array.isArray(data.data) ? data.data : [data.data]
-            };
-            this._cache.set(cacheKey, transformedData);
-            return transformedData;
-        } catch (error) {
-            console.error('Error searching characters:', error);
-            throw error;
-        }
+        const normalizedData = this._normalizeResponse(data);
+        this._cache.set(cacheKey, normalizedData);
+        return normalizedData;
     }
 
     async getCharacterById(id) {
@@ -65,20 +76,15 @@ class DisneyApiService {
             return this._cache.get(cacheKey);
         }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/characters/${id}`);
-            
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status}`);
-            }
+        const data = await this._fetchWithErrorHandling(
+            `${API_BASE_URL}/characters/${id}`,
+            'getCharacterById'
+        );
 
-            const data = await response.json();
-            this._cache.set(cacheKey, data);
-            return data;
-        } catch (error) {
-            console.error('Error fetching character:', error);
-            throw error;
-        }
+        const normalizedData = this._normalizeResponse(data);
+        const character = normalizedData[0] || null;
+        this._cache.set(cacheKey, character);
+        return character;
     }
 
     clearCache() {

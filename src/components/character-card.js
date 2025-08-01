@@ -1,19 +1,13 @@
 import { LitElement, html, css } from 'lit';
 import { storageService } from '../services/storage.js';
-import { urlState } from '../services/url-state.js';
-import {
-    FRANCHISE_SEARCH_TERMS,
-    FRANCHISE_CHARACTER_NAMES,
-    ROLE_RULES,
-    ERA_FILMS
-} from '../constants/index.js';
+import { FilterService } from '../services/filters.js';
 
 export class DisneyCharacterCard extends LitElement {
     static properties = {
         character: { type: Object },
         isFavorite: { type: Boolean },
         loading: { type: Boolean },
-        currentFilters: { type: Object }
+        searchTerm: { type: String }
     };
 
     static styles = css`
@@ -106,11 +100,7 @@ export class DisneyCharacterCard extends LitElement {
         this.character = null;
         this.isFavorite = false;
         this.loading = false;
-        this.currentFilters = {
-            franchise: '',
-            role: '',
-            era: ''
-        };
+        this.searchTerm = '';
 
         this._favoriteChangeHandler = () => {
             if (this.character) {
@@ -119,20 +109,8 @@ export class DisneyCharacterCard extends LitElement {
         };
         window.addEventListener('favorite-change', this._favoriteChangeHandler);
 
-        // Listen for filter changes
-        this._filterChangeHandler = (e) => {
-            this.currentFilters = e.detail;
-            this.requestUpdate();
-        };
-        window.addEventListener('filter-change', this._filterChangeHandler);
-
-        // Initialize filters from URL
-        const urlFilters = urlState.getState();
-        this.currentFilters = {
-            franchise: urlFilters.franchise || '',
-            role: urlFilters.role || '',
-            era: urlFilters.era || ''
-        };
+        const urlParams = new URLSearchParams(window.location.search);
+        this.searchTerm = urlParams.get('search') || '';
     }
 
     connectedCallback() {
@@ -163,6 +141,7 @@ export class DisneyCharacterCard extends LitElement {
             <div class="card-image">
                 <img
                     src="${this.character.imageUrl || this.character.image || '/src/assets/placeholder.svg'}"
+                    loading="lazy"
                     alt="${this.character.name}"
                     @error="${this._handleImageError}"
                 />
@@ -174,9 +153,9 @@ export class DisneyCharacterCard extends LitElement {
                 </button>
             </div>
             <div class="card-content">
-                <h3>${this._highlightSearchTerm(this.character.name)}</h3>
-                <div class="movie">${this._getMediaAppearances()}</div>
-                <div class="role">${this._getCharacterRole()}</div>
+                <h3>${this._getHighlightedName()}</h3>
+                <div class="movie">${FilterService.getMediaAppearances(this.character)}</div>
+                <div class="role">${FilterService.determineCharacterRole(this.character)}</div>
             </div>
         `;
     }
@@ -185,40 +164,13 @@ export class DisneyCharacterCard extends LitElement {
         e.target.src = '/src/assets/placeholder.svg';
     }
 
-    _getMediaAppearances() {
-        if (!this.character) return '';
-    
-        const { films, shortFilms, tvShows, videoGames } = this.character;
-        
-        // Primary media - prioritize films and TV shows
-        if (films?.length > 0) {
-            return `Film: ${films[0]}`;
+    _getHighlightedName() {
+        if (!this.searchTerm) {
+            return this.character.name;
         }
         
-        if (tvShows?.length > 0) {
-            return `TV: ${tvShows[0]}`;
-        }
-    
-        // Secondary media - if no films/TV, show other appearances
-        if (shortFilms?.length > 0) {
-            return `Short Film: ${shortFilms[0]}`;
-        }
-        
-        if (videoGames?.length > 0) {
-            return `Game: ${videoGames[0]}`;
-        }
-    
-        return 'No media appearances';
-    }
-
-        _getCharacterRole() {
-        if (!this.character) return '';
-
-        if (ROLE_RULES.isVillain(this.character)) return 'Villain';
-        if (ROLE_RULES.isHero(this.character)) return 'Hero';
-        if (ROLE_RULES.isSidekick(this.character)) return 'Sidekick';
-        
-        return this.character.parkAttractions?.length > 0 ? 'Featured Character' : 'Character';
+        const highlighted = FilterService.highlightSearchTerm(this.character.name, this.searchTerm);
+        return html`${highlighted}`;
     }
 
     _toggleFavorite() {
@@ -233,72 +185,6 @@ export class DisneyCharacterCard extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('favorite-change', this._favoriteChangeHandler);
-        window.removeEventListener('filter-change', this._filterChangeHandler);
-    }
-
-    _highlightSearchTerm(text) {
-        const searchParams = new URLSearchParams(window.location.search);
-        const searchTerm = searchParams.get('search');
-
-        if (!searchTerm) return text;
-
-        const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
-        return html`${parts.map(part => 
-            part.toLowerCase() === searchTerm.toLowerCase()
-                ? html`<span class="highlight">${part}</span>`
-                : html`${part}`
-        )}`;
-    }
-
-    _matchesFilters() {
-        if (!this.character) return false;
-
-        const { franchise, role, era } = this.currentFilters;
-
-        if (!franchise && !role && !era) return true;
-
-        // Check franchise filter
-        if (franchise) {
-            const searchTerms = FRANCHISE_SEARCH_TERMS[franchise] || [franchise.replace('-', ' ')];
-            let isMatch = false;
-
-            // Check films
-            if (this.character.films?.length) {
-                isMatch = this.character.films.some(film => 
-                    searchTerms.some(term => film.toLowerCase().includes(term))
-                );
-            }
-
-            // Check character names for specific franchises
-            const characterNames = FRANCHISE_CHARACTER_NAMES[franchise];
-            if (!isMatch && characterNames) {
-                const name = this.character.name.toLowerCase();
-                isMatch = characterNames.some(charName => name.includes(charName));
-            }
-
-            if (!isMatch) return false;
-        }
-
-        // Check role filter
-        if (role) {
-            const characterRole = this._getCharacterRole().toLowerCase();
-            console.log('Role match for', this.character.name, ':', characterRole, 'vs', role);
-            if (characterRole !== role.toLowerCase()) return false;
-        }
-
-        // Check era filter
-        if (era && this.character.films?.length) {
-            const firstFilm = this.character.films[0].toLowerCase();
-            const eraFilms = ERA_FILMS[era] || [];
-            
-            const matchesEra = eraFilms.some(eraFilm => 
-                firstFilm.includes(eraFilm.toLowerCase())
-            );
-            
-            if (!matchesEra) return false;
-        }
-
-        return true;
     }
 }
 

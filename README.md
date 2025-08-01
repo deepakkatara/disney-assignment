@@ -29,6 +29,7 @@ src/
     results-grid.js     # Grid layout for results
     favorites-panel.js  # Saved characters panel
   services/
+    filters.js          # handle filter related logic
     api.js             # Disney API integration
     storage.js         # localStorage management
     url-state.js       # URL state management
@@ -74,9 +75,9 @@ The filter system is implemented using a combination of:
 
 ## Performance Optimizations
 
-1. Virtual scrolling for large datasets
+1. Virtual scrolling for large datasets (not Implemented)
 2. Debounced search input
-3. Memoized filter functions
+3. Memoized filter functions (not Implemented)
 4. Lazy loading images
 5. Client-side caching
 
